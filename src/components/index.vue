@@ -33,8 +33,8 @@
     position: absolute;
     width: 100%;
     top: 20px;
-    height: 75px;
-    line-height: 75px;
+    height: 60px;
+    line-height: 60px;
     text-align: center;
     background: #ffffff;
     color: #ed4835;
@@ -47,7 +47,6 @@
   }
 
   table {
-    display: block;
     overflow: auto;
     word-break: normal;
     border-collapse: collapse;
@@ -69,34 +68,57 @@
     background: #f0f0f0;
     color: #333;
   }
+
+  .info {
+    height: 30px;
+    text-align: right;
+  }
 </style>
 
 <template>
   <div id="wrapper">
     <div class="main">
+
       <label class="label" for="invoice">
         <input id="invoice" type="file" name="invoice" accept="application/pdf" multiple @change="readFile">
         +上传发票
       </label>
       <div v-if="fileMsg" class="tip">{{fileMsg}}</div>
-      <table border="0">
+      <div class="info">
+        加载耗时: {{(loadTime/1000).toFixed(2)}}秒 ，
+        识别耗时：{{(analyzeTime/1000).toFixed(2)}}秒 ，
+        本次识别文件{{fileLength}}个，准确率：{{accuracy}}%
+      </div>
+
+      <table border="0" cellspacing="0" style="width: 100%;">
+        <thead>
         <tr>
-          <th>车牌号</th>
-          <th>开票日期</th>
-          <th>通行日期起</th>
-          <th>通行日期止</th>
-          <th>发票代码</th>
-          <th>发票号码</th>
-          <th>购方名称</th>
+          <th width="90">车牌号</th>
+          <th width="90">开票日期</th>
+          <th width="90">通行日期起</th>
+          <th width="90">通行日期止</th>
+          <th width="120">发票代码</th>
+          <th width="100">发票号码</th>
+          <th width="160">购方名称</th>
           <th>销方名称</th>
-          <th>未税金额</th>
-          <th>进项税额</th>
-          <th>价税合计</th>
-          <th>税率</th>
+          <th width="70">未税金额</th>
+          <th width="70">进项税额</th>
+          <th width="70">价税合计</th>
+          <th width="50">税率</th>
         </tr>
+        </thead>
+        <tbody>
         <tr v-for="row in rows">
-          <td v-for="item in row">{{item}}</td>
+          <template v-if="row.err">
+            <td colspan="12">{{row.err}} 文件名: {{row.fileName}} PDF版本：{{row.pdfVersion}}</td>
+          </template>
+          <template v-else>
+            <td v-for="item in row">{{item}}</td>
+          </template>
+
         </tr>
+        </tbody>
+
       </table>
     </div>
   </div>
@@ -189,7 +211,11 @@
             minX: 20,
             minY: 0
           }
-        ]
+        ],
+        loadTime: 0,
+        analyzeTime: 0,
+        accuracy: 100,
+        fileLength: 0
       }
     },
     methods: {
@@ -198,25 +224,37 @@
         let $file = document.querySelector('#invoice')
         let files = $file.files
         that.fileMsg = '开始读取文件...'
+        let startLoad = performance.now()
+        let fileLength = files.length
+
+        let loadedIndex = 0
+        let analyzeIndex = 0
+        let errFileNumber = 0
+        that.fileLength = fileLength
         for (let file of  files) {
           ((file) => {
             let fileReader = new FileReader()
             fileReader.onload = function () {
+              if (++loadedIndex === fileLength) {
+                that.loadTime += performance.now() - startLoad
+              }
               that.fileMsg = '开始解析发票...'
               let typedArray = new Uint8Array(this.result)
+              let startAnalyze = performance.now()
               pdfJS.getDocument(typedArray).then((doc) => {
                 let numPages = doc.numPages
                 console.log('一共有: ' + numPages + '页\n')
-                let lastPromise; // will be used to chain promises
+                let lastPromise
+                let pdfVersion = ''
                 lastPromise = doc.getMetadata().then((data) => {
                   console.log('\n', JSON.stringify(data.info, null, 2), '\n')
+                  pdfVersion = data.info.PDFFormatVersion
                 })
-
                 let loadPage = function (pageNum) {
                   doc.getPage(pageNum).then(function (page) {
-                    console.log('页码:' + pageNum + '\n')
+                    // console.log('页码:' + pageNum + '\n')
                     let viewport = page.getViewport(1.0 /* scale */);
-                    console.log('Size: ' + viewport.width + 'x' + viewport.height)
+                    // console.log('Size: ' + viewport.width + 'x' + viewport.height)
                     page.getTextContent().then(function (content) {
                       console.log('content:', content)
                       let n = 0
@@ -275,20 +313,32 @@
                           }
                         }
                       }
-                      that.rows.push(_row)
-                      console.log(n)
+                      if (_row.length) {
+                        that.rows.push(_row)
+                      } else {
+                        ++errFileNumber
+                        console.log(errFileNumber)
+                        that.accuracy = 100 - parseInt((errFileNumber / fileLength) * 100)
+                        that.rows.push({
+                          err: '文件解析失败',
+                          fileName: file.name,
+                          pdfVersion: pdfVersion
+                        })
+                      }
+                      // console.log(n)
                     })
                   })
-                };
-                // Loading of the first page will wait on metadata and subsequent loadings
-                // will wait on the previous pages.
-                for (let i = 1; i <= numPages; i++) {
+                }
+                for (let i = 1; i <= 1; i++) { //目前假设 当前文档只有1页  i<=numPages
                   lastPromise = lastPromise.then(loadPage.bind(this, i))
                 }
-                $file.value = ''
                 return lastPromise
               }).then(function () {
                 // 文档读取完毕
+                $file.value = ''
+                if (++analyzeIndex === fileLength) {
+                  that.analyzeTime += performance.now() - startAnalyze
+                }
                 that.fileMsg = ''
               }, function (err) {
                 console.error('Error: ' + err);
