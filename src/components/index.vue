@@ -220,7 +220,8 @@
             minY: 0,
             validate: (val) => {
               return /^[\d|\.{0,1}]*$/i.test(val)
-            }
+            },
+            default: 0
           },
           {
             text: '价税合计',
@@ -235,12 +236,16 @@
             text: '税率',
             flag: '税率',
             minX: 20,
-            minY: 0
+            minY: 0,
+            format: (val) => {
+              return val.replace(/不征税/g, '0%')
+            },
+            default: '0%'
           }
         ],
         loadTime: 0,
         analyzeTime: 0,
-        accuracy: 0,
+        accuracy: 100,
         fileLength: 0,
         untaxedAmount: 0,
         taxedAmount: 0,
@@ -260,6 +265,7 @@
         this.loadTime = 0
         this.analyzeTime = 0
         this.accuracy = 0
+
         this.fileLength = 0
         this.untaxedAmount = 0
         this.taxedAmount = 0
@@ -361,12 +367,12 @@
                               }
                             })
                             // console.log(tar.text, ':', tar.value)
-                            _row.push(tar.value || '--')
+                            _row.push(tar.value || tar.default)
                             break
                           }
                         }
                       }
-                      if (_row.length) {
+                      if (_row.length === 12) {
                         that.rows.push(_row)
                         that.untaxedAmount += +(_row[8])
                         that.taxedAmount += +(_row[9])
