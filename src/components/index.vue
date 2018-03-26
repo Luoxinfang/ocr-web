@@ -59,7 +59,7 @@
   }
 
   table th, table td {
-    padding: 6px 13px;
+    padding: 5px;
     border: 1px solid #ddd;
   }
 
@@ -70,8 +70,19 @@
   }
 
   .info {
-    height: 30px;
+    height: 20px;
+    line-height: 16px;
     text-align: right;
+  }
+
+  .red {
+    color: red;
+  }
+
+  .btn {
+    padding: 6px 10px;
+    border-radius: 5px;
+    outline: none;
   }
 </style>
 
@@ -84,13 +95,26 @@
         +上传发票
       </label>
       <div v-if="fileMsg" class="tip">{{fileMsg}}</div>
-      <div class="info">
-        加载耗时: {{(loadTime/1000).toFixed(2)}}秒 ，
-        识别耗时：{{(analyzeTime/1000).toFixed(2)}}秒 ，
-        本次识别文件{{fileLength}}个，准确率：{{accuracy}}%
-      </div>
-
       <table border="0" cellspacing="0" style="width: 100%;">
+        <tr>
+          <td>
+            <div class="info">
+              未税金额汇总: {{untaxedAmount.toFixed(2)}} &nbsp;
+              进项税额汇总: {{taxedAmount.toFixed(2)}} &nbsp;
+              价税汇总: {{priceTax.toFixed(2)}} &nbsp;
+            </div>
+            <div class="info">
+              加载耗时: {{(loadTime/1000).toFixed(2)}}秒 ，
+              识别耗时：{{(analyzeTime/1000).toFixed(2)}}秒 ，
+              本次识别文件 {{fileLength}} 个，准确率：<span class="red">{{accuracy}}%</span>
+            </div>
+          </td>
+          <td width="200" align="center">
+            <button class="btn" disabled @click="exportData">导出数据</button>
+          </td>
+        </tr>
+      </table>
+      <table border="0" cellspacing="0" style="width: 100%; margin-top: 10px;">
         <thead>
         <tr>
           <th width="90">车牌号</th>
@@ -99,7 +123,7 @@
           <th width="90">通行日期止</th>
           <th width="120">发票代码</th>
           <th width="100">发票号码</th>
-          <th width="160">购方名称</th>
+          <th width="240">购方名称</th>
           <th>销方名称</th>
           <th width="70">未税金额</th>
           <th width="70">进项税额</th>
@@ -109,29 +133,28 @@
         </thead>
         <tbody>
         <tr v-for="row in rows">
-          <template v-if="row.err">
-            <td colspan="12">{{row.err}} 文件名: {{row.fileName}} PDF版本：{{row.pdfVersion}}</td>
-          </template>
-          <template v-else>
-            <td v-for="item in row">{{item}}</td>
-          </template>
-
+          <td v-for="item in row">{{item}}</td>
+        </tr>
+        <tr v-for="row in errList">
+          <td colspan="12" class="red">{{row.err}} 文件名: {{row.fileName}} PDF版本：{{row.pdfVersion}}</td>
         </tr>
         </tbody>
-
       </table>
     </div>
   </div>
 </template>
 
 <script>
+  import coreWorker from '../assets/lib/pdf.worker'
   import pdfJS from '../assets/lib/pdf'
 
+  window.core_worker = coreWorker
   export default {
     data () {
       return {
         fileMsg: '',
         rows: [],
+        errList: [],
         target: [
           {
             text: '车牌号',
@@ -143,7 +166,10 @@
             text: '开票日期',
             flag: '开票日期',
             minX: 100,
-            minY: 12
+            minY: 12,
+            format: (text) => {
+              return text.replace(/年|月/g, '/').replace('日', '')
+            }
           },
           {
             text: '通行日期起',
@@ -214,36 +240,54 @@
         ],
         loadTime: 0,
         analyzeTime: 0,
-        accuracy: 100,
-        fileLength: 0
+        accuracy: 0,
+        fileLength: 0,
+        untaxedAmount: 0,
+        taxedAmount: 0,
+        priceTax: 0
       }
     },
     methods: {
+      exportData () {
+        let dlWindow = window.open()
+        this.$http.post('/api/excel', {data: this.rows}).then((data) => {
+          dlWindow.location = data.url
+        })
+      },
       readFile () {
+        this.rows = []
+        this.errList = []
+        this.loadTime = 0
+        this.analyzeTime = 0
+        this.accuracy = 0
+        this.fileLength = 0
+        this.untaxedAmount = 0
+        this.taxedAmount = 0
+        this.priceTax = 0
         let that = this
         let $file = document.querySelector('#invoice')
         let files = $file.files
         that.fileMsg = '开始读取文件...'
         let startLoad = performance.now()
         let fileLength = files.length
-
         let loadedIndex = 0
         let analyzeIndex = 0
         let errFileNumber = 0
+        let errList = []
         that.fileLength = fileLength
         for (let file of  files) {
           ((file) => {
             let fileReader = new FileReader()
             fileReader.onload = function () {
               if (++loadedIndex === fileLength) {
-                that.loadTime += performance.now() - startLoad
+                that.loadTime = performance.now() - startLoad
               }
               that.fileMsg = '开始解析发票...'
               let typedArray = new Uint8Array(this.result)
               let startAnalyze = performance.now()
               pdfJS.getDocument(typedArray).then((doc) => {
                 let numPages = doc.numPages
-                console.log('一共有: ' + numPages + '页\n')
+                // console.log('一共有: ' + numPages + '页\n')
                 let lastPromise
                 let pdfVersion = ''
                 lastPromise = doc.getMetadata().then((data) => {
@@ -256,7 +300,8 @@
                     let viewport = page.getViewport(1.0 /* scale */);
                     // console.log('Size: ' + viewport.width + 'x' + viewport.height)
                     page.getTextContent().then(function (content) {
-                      console.log('content:', content)
+                      // console.log('content:', content)
+
                       let n = 0
                       let _row = []
                       for (let i = 0, l = that.target.length; i < l; i++) {
@@ -301,13 +346,21 @@
                             value.forEach((item) => {
                               if (tar.validate) {
                                 if (tar.validate(item)) {
-                                  tar.value += item
+                                  if (tar.format) {
+                                    tar.value += tar.format(item)
+                                  } else {
+                                    tar.value += item
+                                  }
                                 }
                               } else {
-                                tar.value += item
+                                if (tar.format) {
+                                  tar.value += tar.format(item)
+                                } else {
+                                  tar.value += item
+                                }
                               }
                             })
-                            console.log(tar.text, ':', tar.value)
+                            // console.log(tar.text, ':', tar.value)
                             _row.push(tar.value || '--')
                             break
                           }
@@ -315,15 +368,20 @@
                       }
                       if (_row.length) {
                         that.rows.push(_row)
+                        that.untaxedAmount += +(_row[8])
+                        that.taxedAmount += +(_row[9])
+                        that.priceTax += +(_row[10] || 0)
                       } else {
                         ++errFileNumber
-                        console.log(errFileNumber)
-                        that.accuracy = 100 - parseInt((errFileNumber / fileLength) * 100)
-                        that.rows.push({
+                        that.accuracy = (100 - ((errFileNumber / fileLength) * 100)).toFixed(2)
+                        that.errList.push({
                           err: '文件解析失败',
                           fileName: file.name,
                           pdfVersion: pdfVersion
                         })
+                      }
+                      if (++analyzeIndex === fileLength) {
+                        that.analyzeTime = performance.now() - startAnalyze
                       }
                       // console.log(n)
                     })
@@ -336,9 +394,6 @@
               }).then(function () {
                 // 文档读取完毕
                 $file.value = ''
-                if (++analyzeIndex === fileLength) {
-                  that.analyzeTime += performance.now() - startAnalyze
-                }
                 that.fileMsg = ''
               }, function (err) {
                 console.error('Error: ' + err);
@@ -348,6 +403,7 @@
             fileReader.readAsArrayBuffer(file)
           })(file)
         }
+
       },
       findObj (rs, key) {
         if (!rs) {
