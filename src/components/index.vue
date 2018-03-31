@@ -1,43 +1,8 @@
-<style>
-
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
-  body {
-    font-family: 'Source Sans Pro', sans-serif;
-  }
+<style lang="less">
 
   .main {
     width: 96%;
     margin: 0 2%;
-  }
-
-  .label {
-    font-size: 16px;
-    color: #0073ed;
-    cursor: pointer;
-    width: 200px;
-    height: 35px;
-    line-height: 35px;
-    margin: 20px auto;
-    display: block;
-    outline: none;
-    text-align: center;
-    border: 1px solid #8cc4f0;
-  }
-
-  .tip {
-    position: absolute;
-    width: 100%;
-    top: 20px;
-    height: 60px;
-    line-height: 60px;
-    text-align: center;
-    background: #ffffff;
-    color: #ed4835;
   }
 
   .invoice {
@@ -318,10 +283,10 @@
 </template>
 
 <script>
-  import coreWorker from '../assets/lib/pdf.worker'
-  import pdfJS from '../assets/lib/pdf'
+  import analyzeJS from '../assets/lib/analyze'
+  import CoreJS from '../assets/lib/core'
 
-  window.core_worker = coreWorker
+  window.analyzeJS = analyzeJS
   export default {
     data () {
       return {
@@ -456,15 +421,7 @@
         })
       },
       readFile () {
-        this.rows = []
-        this.errList = []
-        this.loadTime = 0
-        this.analyzeTime = 0
-        this.accuracy = 100
-        this.fileLength = 0
-        this.untaxedAmount = 0
-        this.taxedAmount = 0
-        this.priceTax = 0
+        this.reset()
         let that = this
         let $file = document.querySelector('.invoice')
         let files = $file.files
@@ -473,7 +430,6 @@
         let loadedIndex = 0
         let analyzeIndex = 0
         let errFileNumber = 0
-        let errList = []
         that.cancelUploading = false
         that.fileLength = fileLength
         if (fileLength > 1000) {
@@ -484,9 +440,6 @@
         }
         for (let file of  files) {
           ((file) => {
-            if (!that.cancelUploading) {
-              that.fileMsg = '正在读取发票'
-            }
             let fileReader = new FileReader()
             fileReader.onload = function () {
               if (++loadedIndex === fileLength) {
@@ -497,9 +450,7 @@
               }
               let typedArray = new Uint8Array(this.result)
               let startAnalyze = performance.now()
-              pdfJS.getDocument(typedArray).then((doc) => {
-                let numPages = doc.numPages
-                // console.log('一共有: ' + numPages + '页\n')
+              CoreJS.getDocument(typedArray).then((doc) => {
                 let lastPromise
                 let pdfVersion = ''
                 lastPromise = doc.getMetadata().then((data) => {
@@ -513,17 +464,11 @@
                     return false
                   }
                   doc.getPage(pageNum).then(function (page) {
-                    // console.log('页码:' + pageNum + '\n')
-                    let viewport = page.getViewport(1.0 /* scale */);
-                    // console.log('Size: ' + viewport.width + 'x' + viewport.height)
                     page.getTextContent().then(function (content) {
-                      // console.log('content:', content)
-
-                      let n = 0
                       let _row = []
                       for (let i = 0, l = that.target.length; i < l; i++) {
                         let tar = that.target[i]
-                        for (let j = 0, l = content.items.length; j < l; j++) {
+                        for (let j = 0; j < content.items.length; j++) {
                           let item = content.items[j]
                           if (item.str.replace(/\s/g, '').indexOf(tar.flag) > -1) {
                             tar.w = item.width
@@ -533,16 +478,15 @@
                             content.items.splice(j, 1) // 移除key值 无计算价值
                             // 开始查找该项的值
                             let value = [], minX = 1000, minY = 1000
-                            for (let k = 0, l = content.items.length; k < l; k++) {
-                              n++
-                              let _temp = content.items[k];
-                              if (/\（|\）|\:|\(|\)/g.test(item.str)) {
+                            for (let k = 0; k < content.items.length; k++) {
+                              let _temp = content.items[k]
+                              if (/[（）:()]/g.test(item.str)) {
                                 let spaceY = Math.abs(tar.y - _temp.transform[5])
                                 let spaceX = _temp.transform[4] - tar.x - tar.w
                                 if (spaceY < tar.minY && spaceX > 0 && spaceX < tar.minX) {
                                   value.push(_temp.str)
+                                  content.items.splice(k, 1) // 移除已取值
                                 }
-
                               } else {
                                 let spaceY = tar.y - _temp.transform[5]
                                 let spaceX = Math.abs(tar.x - _temp.transform[4])
@@ -555,6 +499,7 @@
                                 } else if (spaceY === minY) {
                                   if (spaceX < tar.minX) {
                                     value.push(_temp.str)
+                                    content.items.splice(k, 1) // 移除已取值
                                   }
                                 }
                               }
@@ -601,8 +546,9 @@
                         that.fileMsg = ''
                         that.analyzeTime = performance.now() - startAnalyze
                       }
-                      that.percentage = parseInt(analyzeIndex / fileLength * 100)
-                      // console.log(n)
+                      setTimeout(() => {
+                        that.percentage = parseInt(analyzeIndex / fileLength * 100)
+                      }, 50)
                     })
                   })
                 }
@@ -615,7 +561,7 @@
                 $file.value = ''
 
               }, function (err) {
-                console.error('Error: ' + err);
+                console.error('Error: ' + err)
               })
 
             }
@@ -623,6 +569,17 @@
           })(file)
         }
 
+      },
+      reset () {
+        this.rows = []
+        this.errList = []
+        this.loadTime = 0
+        this.analyzeTime = 0
+        this.accuracy = 100
+        this.fileLength = 0
+        this.untaxedAmount = 0
+        this.taxedAmount = 0
+        this.priceTax = 0
       },
       findObj (rs, key) {
         if (!rs) {

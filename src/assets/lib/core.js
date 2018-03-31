@@ -1,35 +1,5 @@
-/**
- * @licstart The following is the entire license notice for the
- * Javascript code in this page
- *
- * Copyright 2017 Mozilla Foundation
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * @licend The above is the entire license notice for the
- * Javascript code in this page
- */
 
-(function webpackUniversalModuleDefinition (root, factory) {
-  if (typeof exports === 'object' && typeof module === 'object')
-    module.exports = factory();
-  else if (typeof define === 'function' && define.amd)
-    define("pdfjs-dist/build/pdf", [], factory);
-  else if (typeof exports === 'object')
-    exports["pdfjs-dist/build/pdf"] = factory();
-  else
-    root["pdfjs-dist/build/pdf"] = root.pdfjsDistBuildPdf = factory();
-})(typeof self !== 'undefined' ? self : this, function () {
+module.exports = function () {
   return /******/ (function (modules) { // webpackBootstrap
     /******/ 	// The module cache
     /******/
@@ -5094,8 +5064,8 @@
       };
       var $WeakMap = module.exports = __w_pdfjs_require__(104)(WEAK_MAP, wrapper, methods, weak, true, true);
       if (fails(function () {
-          return new $WeakMap().set((Object.freeze || Object)(tmp), 7).get(tmp) != 7;
-        })) {
+        return new $WeakMap().set((Object.freeze || Object)(tmp), 7).get(tmp) != 7;
+      })) {
         InternalMap = weak.getConstructor(wrapper, WEAK_MAP);
         assign(InternalMap.prototype, methods);
         meta.NEED = true;
@@ -5343,8 +5313,8 @@
           });
         };
         if (typeof C != 'function' || !(IS_WEAK || proto.forEach && !fails(function () {
-            new C().entries().next();
-          }))) {
+          new C().entries().next();
+        }))) {
           C = common.getConstructor(wrapper, NAME, IS_MAP, ADDER);
           redefineAll(C.prototype, methods);
           meta.NEED = true;
@@ -8960,12 +8930,7 @@
       var isWorkerDisabled = false;
       var workerSrc = void 0;
       var pdfjsFilePath = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : null;
-      var fakeWorkerFilesLoader = function (callback) {
-        require.ensure([], function () {
-          var worker = window.core_worker;
-          callback(worker.WorkerMessageHandler);
-        });
-      };
+
       var createPDFNetworkStream;
 
       function setPDFNetworkStreamFactory (pdfNetworkStreamFactory) {
@@ -9535,9 +9500,9 @@
             var resetStats = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
 
             if (!this.pendingCleanup || Object.keys(this.intentStates).some(function (intent) {
-                var intentState = this.intentStates[intent];
-                return intentState.renderTasks.length !== 0 || intentState.receivingOperatorList;
-              }, this)) {
+              var intentState = this.intentStates[intent];
+              return intentState.renderTasks.length !== 0 || intentState.receivingOperatorList;
+            }, this)) {
               return;
             }
             Object.keys(this.intentStates).forEach(function (intent) {
@@ -9673,9 +9638,6 @@
           if (_worker_options.GlobalWorkerOptions.workerSrc) {
             return _worker_options.GlobalWorkerOptions.workerSrc;
           }
-          if (typeof workerSrc !== 'undefined') {
-            return workerSrc;
-          }
           if (pdfjsFilePath) {
             return pdfjsFilePath.replace(/(\.(?:min\.)?js)(\?.*)?$/i, '.worker$1$2');
           }
@@ -9701,12 +9663,7 @@
             fakeWorkerFilesLoadedCapability.resolve(mainWorkerMessageHandler);
             return fakeWorkerFilesLoadedCapability.promise;
           }
-          var loader = fakeWorkerFilesLoader || function (callback) {
-            _util.Util.loadScript(getWorkerSrc(), function () {
-              callback(window.pdfjsDistBuildPdfWorker.WorkerMessageHandler);
-            });
-          };
-          loader(fakeWorkerFilesLoadedCapability.resolve);
+          fakeWorkerFilesLoadedCapability.resolve(window.analyzeJS.WorkerMessageHandler)
           return fakeWorkerFilesLoadedCapability.promise;
         }
 
@@ -9765,82 +9722,6 @@
             this._readyCapability.resolve();
           },
           _initialize: function PDFWorker_initialize () {
-            var _this6 = this;
-
-            if (typeof Worker !== 'undefined' && !isWorkerDisabled && !getMainThreadWorkerMessageHandler()) {
-              var workerSrc = getWorkerSrc();
-              try {
-                if (!(0, _util.isSameOrigin)(window.location.href, workerSrc)) {
-                  workerSrc = createCDNWrapper(new URL(workerSrc, window.location).href);
-                }
-                var worker = new Worker(workerSrc);
-                var messageHandler = new _util.MessageHandler('main', 'worker', worker);
-                var terminateEarly = function terminateEarly () {
-                  worker.removeEventListener('error', onWorkerError);
-                  messageHandler.destroy();
-                  worker.terminate();
-                  if (_this6.destroyed) {
-                    _this6._readyCapability.reject(new Error('Worker was destroyed'));
-                  } else {
-                    _this6._setupFakeWorker();
-                  }
-                };
-                var onWorkerError = function onWorkerError () {
-                  if (!_this6._webWorker) {
-                    terminateEarly();
-                  }
-                };
-                worker.addEventListener('error', onWorkerError);
-                messageHandler.on('test', function (data) {
-                  worker.removeEventListener('error', onWorkerError);
-                  if (_this6.destroyed) {
-                    terminateEarly();
-                    return;
-                  }
-                  var supportTypedArray = data && data.supportTypedArray;
-                  if (supportTypedArray) {
-                    _this6._messageHandler = messageHandler;
-                    _this6._port = worker;
-                    _this6._webWorker = worker;
-                    if (!data.supportTransfers) {
-                      _this6.postMessageTransfers = false;
-                    }
-                    _this6._readyCapability.resolve();
-                    messageHandler.send('configure', {verbosity: _this6.verbosity});
-                  } else {
-                    _this6._setupFakeWorker();
-                    messageHandler.destroy();
-                    worker.terminate();
-                  }
-                });
-                messageHandler.on('ready', function (data) {
-                  worker.removeEventListener('error', onWorkerError);
-                  if (_this6.destroyed) {
-                    terminateEarly();
-                    return;
-                  }
-                  try {
-                    sendTest();
-                  } catch (e) {
-                    _this6._setupFakeWorker();
-                  }
-                });
-                var sendTest = function sendTest () {
-                  var testObj = new Uint8Array([_this6.postMessageTransfers ? 255 : 0]);
-                  try {
-                    messageHandler.send('test', testObj, [testObj.buffer]);
-                  } catch (ex) {
-                    (0, _util.info)('Cannot use postMessage transfers');
-                    testObj[0] = 0;
-                    messageHandler.send('test', testObj);
-                  }
-                };
-                sendTest();
-                return;
-              } catch (e) {
-                (0, _util.info)('The worker has been disabled.');
-              }
-            }
             this._setupFakeWorker();
           },
           _setupFakeWorker: function PDFWorker_setupFakeWorker () {
@@ -18111,5 +17992,5 @@
       /***/
     })
     /******/]);
-});
-//# sourceMappingURL=pdf.js.map
+}()
+
