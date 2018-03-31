@@ -40,10 +40,13 @@
     color: #ed4835;
   }
 
-  #invoice {
-    width: 0;
-    height: 0;
+  .invoice {
+    width: 107px;
+    height: 40px;
     outline: none;
+    opacity: 0;
+    position: relative;
+    top: -43px;
   }
 
   table {
@@ -84,62 +87,232 @@
     border-radius: 5px;
     outline: none;
   }
+
+  .upload-bg {
+    width: 127px;
+    height: 127px;
+    margin: 160px auto 0;
+    background: url("./bg.png") center no-repeat;
+    background-size: contain;
+  }
+
+  .upload-btn {
+    width: 108px;
+    margin: 20px auto;
+    overflow: hidden;
+  }
+
+  .btn-top {
+    width: 108px;
+    height: 40px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+
+  .el-button {
+    background: #7352bf !important;
+    color: #ffffff !important;
+  }
+
+  .el-progress.is-success .el-progress-bar__inner {
+    background: #7352bf;
+  }
+
+  .el-progress-bar__innerText {
+    float: right;
+    margin-top: 1px;
+  }
+
+  .el-button.is-disabled {
+    background: #c0c4cc !important;
+    color: #ffffff !important;
+  }
+
+  .el-icon-error {
+    color: #e8e6ee;
+    font-size: 20px;
+  }
+
+  .el-table th {
+    background: #f1f1f5;
+  }
+
+  table td, table th {
+    border: none;
+    border-bottom: 1px solid #ebeef5;
+  }
+
+  .s-info {
+    height: 60px;
+    line-height: 60px;
+    border-bottom: 1px solid #ebeef5;
+    font-size: 13px;
+    text-align: right;
+  }
+
+  .yellow {
+    color: #ff9300;
+  }
+
+  .tip-main {
+    width: 60%;
+    margin: 10px auto;
+  }
 </style>
 
 <template>
   <div id="wrapper">
     <div class="main">
+      <div v-if="rows.length" class="has-rs">
+        <div class="btn-top">
+          <el-button>+上传发票</el-button>
+          <input class="invoice" type="file" accept="application/pdf" multiple @change="readFile">
+        </div>
+        <div class="content" :style="{height: height+'px'}">
+          <el-table
+            :data="rows"
+            :max-height="height"
+            @selection-change="handleSelectionChange"
+            :style="{width: '100%'}">
+            <el-table-column
+              type="selection"
+              width="40">
+            </el-table-column>
+            <el-table-column
+              fixed
+              label="序号"
+              width="50">
+              <template slot-scope="scope">{{scope.$index+1}}</template>
+            </el-table-column>
+            <el-table-column
+              fixed
+              label="车牌号"
+              width="90">
+              <template slot-scope="scope">{{scope.row[0]}}</template>
+            </el-table-column>
+            <el-table-column
+              fixed
+              label="上传时间"
+              width="96">
+              <template slot-scope="scope">{{date}}</template>
+            </el-table-column>
 
-      <label class="label" for="invoice">
-        <input id="invoice" type="file" name="invoice" accept="application/pdf" multiple @change="readFile">
-        +上传发票
-      </label>
-      <div v-if="fileMsg" class="tip">{{fileMsg}}</div>
-      <table border="0" cellspacing="0" style="width: 100%;">
-        <tr>
-          <td>
-            <div class="info">
-              未税金额汇总: {{untaxedAmount.toFixed(2)}} &nbsp;
-              进项税额汇总: {{taxedAmount.toFixed(2)}} &nbsp;
-              价税汇总: {{priceTax.toFixed(2)}} &nbsp;
-            </div>
-            <div class="info">
-              加载耗时: {{(loadTime/1000).toFixed(2)}}秒 ，
-              识别耗时：{{(analyzeTime/1000).toFixed(2)}}秒 ，
-              本次识别文件 {{fileLength}} 个，准确率：<span class="red">{{accuracy}}%</span>
-            </div>
-          </td>
-          <td width="200" align="center">
-            <button class="btn" disabled @click="exportData">导出数据</button>
-          </td>
-        </tr>
-      </table>
-      <table border="0" cellspacing="0" style="width: 100%; margin-top: 10px;">
-        <thead>
-        <tr>
-          <th width="90">车牌号</th>
-          <th width="90">开票日期</th>
-          <th width="90">通行日期起</th>
-          <th width="90">通行日期止</th>
-          <th width="120">发票代码</th>
-          <th width="100">发票号码</th>
-          <th width="240">购方名称</th>
-          <th>销方名称</th>
-          <th width="70">未税金额</th>
-          <th width="70">进项税额</th>
-          <th width="70">价税合计</th>
-          <th width="50">税率</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="row in rows">
-          <td v-for="item in row">{{item}}</td>
-        </tr>
-        <tr v-for="row in errList">
-          <td colspan="12" class="red">{{row.err}} 文件名: {{row.fileName}} PDF版本：{{row.pdfVersion}}</td>
-        </tr>
-        </tbody>
-      </table>
+            <el-table-column
+              label="开票日期"
+              width="96">
+              <template slot-scope="scope">{{scope.row[1]}}</template>
+            </el-table-column>
+            <el-table-column
+              label="通行日期起"
+              width="100">
+              <template slot-scope="scope">{{scope.row[2]}}</template>
+            </el-table-column>
+            <el-table-column
+              label="通行日期止"
+              width="100">
+              <template slot-scope="scope">{{scope.row[3]}}</template>
+            </el-table-column>
+            <el-table-column
+              label="发票代码"
+              width="120">
+              <template slot-scope="scope">{{scope.row[4]}}</template>
+            </el-table-column>
+            <el-table-column
+              label="发票号码"
+              width="100">
+              <template slot-scope="scope">{{scope.row[5]}}</template>
+            </el-table-column>
+            <el-table-column
+              label="购方名称"
+              width="300">
+              <template slot-scope="scope">{{scope.row[6]}}</template>
+            </el-table-column>
+            <el-table-column
+              label="销方名称"
+              min-width="200">
+              <template slot-scope="scope">{{scope.row[7]}}</template>
+            </el-table-column>
+            <el-table-column
+              label="未税金额"
+              width="80">
+              <template slot-scope="scope">{{scope.row[8]}}</template>
+            </el-table-column>
+            <el-table-column
+              label="进项税额"
+              width="80">
+              <template slot-scope="scope">{{scope.row[9]}}</template>
+            </el-table-column>
+            <el-table-column
+              label="税价合计"
+              width="80">
+              <template slot-scope="scope">{{scope.row[10]}}</template>
+            </el-table-column>
+            <el-table-column
+              label="税率"
+              width="80">
+              <template slot-scope="scope">{{scope.row[10]}}</template>
+            </el-table-column>
+            <el-table-column
+              fixed="right"
+              label="操作"
+              align="center"
+              width="50">
+              <template slot-scope="scope">
+                <i @click="removeItem(scope.$index)" class="el-icon-error"></i>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <div class="s-info">
+          未税金额汇总: <span class="yellow">{{untaxedAmount.toFixed(2)}}</span> &nbsp;
+          进项税额汇总: <span class="yellow">{{taxedAmount.toFixed(2)}}</span> &nbsp;
+          价税汇总: <span class="yellow">{{priceTax.toFixed(2)}}</span> &nbsp;
+          加载耗时: <span class="yellow">{{(loadTime/1000).toFixed(2)}}</span>秒 ，
+          识别耗时：<span class="yellow">{{(analyzeTime/1000).toFixed(2)}}</span>秒 ，
+          本次识别文件 <span class="yellow">{{fileLength}}</span> 个，准确率：<span class="yellow">{{accuracy}}%</span>
+          <el-button @click="exportData" style="margin-left: 20px;" :disabled="selectedRows.length===0">
+            <i class="el-icon-download"></i>导出数据
+          </el-button>
+        </div>
+      </div>
+      <div v-else class="file">
+        <div class="upload-bg"></div>
+        <div class="upload-btn">
+          <el-button>+上传发票</el-button>
+          <input class="invoice" type="file" accept="application/pdf" multiple @change="readFile">
+        </div>
+      </div>
+      <el-dialog
+        title="解析发票"
+        :visible.sync="analyzing"
+        width="50%">
+        <div class="tip-main">
+          <div>{{fileMsg}}：</div>
+          <el-progress :text-inside="true" :stroke-width="14" :percentage="percentage" status="success"></el-progress>
+        </div>
+        <div slot="footer" class="dialog-footer">
+          <el-button @click="cancelUpload">取 消</el-button>
+        </div>
+      </el-dialog>
+      <el-dialog
+        title="导出数据"
+        :visible.sync="download"
+        width="50%">
+        <div style="height: 100px; font-size: 16px; text-align: center;">
+          <div class="s" style="width: 100px; margin: 10px auto;" v-if="downloadSuccess">
+            <img src="./xl-emo.png">
+            <div style="color: #88cca6;">导出成功</div>
+          </div>
+          <div class="f" style="width: 100px; margin: 0 auto;" v-else>
+            <img src="./kl-emo.png">
+            <div style="color: #ff0000;">导出失败</div>
+          </div>
+        </div>
+        <div slot="footer" class="dialog-footer">
+          <el-button @click="download = false">完成</el-button>
+        </div>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -152,6 +325,11 @@
   export default {
     data () {
       return {
+        download: false,
+        downloadSuccess: false,
+        height: (document.documentElement.clientHeight - 210),
+        selectedRows: [],
+        date: this.dateFormat(new Date(), 'yyyy.MM.dd'),
         fileMsg: '',
         rows: [],
         errList: [],
@@ -168,20 +346,26 @@
             minX: 100,
             minY: 12,
             format: (text) => {
-              return text.replace(/年|月/g, '/').replace('日', '')
+              return text.replace(/年|月/g, '.').replace('日', '')
             }
           },
           {
             text: '通行日期起',
             flag: '通行日期起',
             minX: 10,
-            minY: 0
+            minY: 0,
+            format: (text) => {
+              return text.substring(0, 4) + '.' + text.substring(4, 6) + '.' + text.substring(6, 8)
+            }
           },
           {
             text: '通行日期止',
             flag: '通行日期止',
             minX: 10,
-            minY: 0
+            minY: 0,
+            format: (text) => {
+              return text.substring(0, 4) + '.' + text.substring(4, 6) + '.' + text.substring(6, 8)
+            }
           },
           {
             text: '发票代码',
@@ -249,14 +433,26 @@
         fileLength: 0,
         untaxedAmount: 0,
         taxedAmount: 0,
-        priceTax: 0
+        priceTax: 0,
+        percentage: 0,
+        cancelUploading: false
       }
     },
     methods: {
       exportData () {
-        let dlWindow = window.open()
-        this.$http.post('/api/excel', {data: this.rows}).then((data) => {
-          dlWindow.location = data.url
+        // console.log(this.rows.length, this.rows)
+        this.$http.post('/api/excel', {data: this.selectedRows}).then((data) => {
+          this.download = true
+          if (data.data) {
+            this.downloadSuccess = true
+            window.location = window.location.origin + '/' + data.data.url
+          } else {
+            this.downloadSuccess = false
+          }
+        }).catch((err) => {
+          this.download = true
+          this.downloadSuccess = false
+          // dlWindow.close()
         })
       },
       readFile () {
@@ -264,31 +460,41 @@
         this.errList = []
         this.loadTime = 0
         this.analyzeTime = 0
-        this.accuracy = 0
-
+        this.accuracy = 100
         this.fileLength = 0
         this.untaxedAmount = 0
         this.taxedAmount = 0
         this.priceTax = 0
         let that = this
-        let $file = document.querySelector('#invoice')
+        let $file = document.querySelector('.invoice')
         let files = $file.files
-        that.fileMsg = '开始读取文件...'
         let startLoad = performance.now()
         let fileLength = files.length
         let loadedIndex = 0
         let analyzeIndex = 0
         let errFileNumber = 0
         let errList = []
+        that.cancelUploading = false
         that.fileLength = fileLength
+        if (fileLength > 1000) {
+          this.$alert('一次最多只能上传1000个文件', '文件上限', {
+            confirmButtonText: '确定'
+          })
+          return false
+        }
         for (let file of  files) {
           ((file) => {
+            if (!that.cancelUploading) {
+              that.fileMsg = '正在读取发票'
+            }
             let fileReader = new FileReader()
             fileReader.onload = function () {
               if (++loadedIndex === fileLength) {
                 that.loadTime = performance.now() - startLoad
               }
-              that.fileMsg = '开始解析发票...'
+              if (!that.cancelUploading) {
+                that.fileMsg = '正在解析发票'
+              }
               let typedArray = new Uint8Array(this.result)
               let startAnalyze = performance.now()
               pdfJS.getDocument(typedArray).then((doc) => {
@@ -297,10 +503,15 @@
                 let lastPromise
                 let pdfVersion = ''
                 lastPromise = doc.getMetadata().then((data) => {
-                  console.log('\n', JSON.stringify(data.info, null, 2), '\n')
+                  // console.log('\n', JSON.stringify(data.info, null, 2), '\n')
                   pdfVersion = data.info.PDFFormatVersion
                 })
                 let loadPage = function (pageNum) {
+                  if (that.cancelUploading) {
+                    that.rows = []
+                    that.fileMsg = ''
+                    return false
+                  }
                   doc.getPage(pageNum).then(function (page) {
                     // console.log('页码:' + pageNum + '\n')
                     let viewport = page.getViewport(1.0 /* scale */);
@@ -387,8 +598,10 @@
                         })
                       }
                       if (++analyzeIndex === fileLength) {
+                        that.fileMsg = ''
                         that.analyzeTime = performance.now() - startAnalyze
                       }
+                      that.percentage = parseInt(analyzeIndex / fileLength * 100)
                       // console.log(n)
                     })
                   })
@@ -400,7 +613,7 @@
               }).then(function () {
                 // 文档读取完毕
                 $file.value = ''
-                that.fileMsg = ''
+
               }, function (err) {
                 console.error('Error: ' + err);
               })
@@ -421,9 +634,51 @@
             return obj.word || '--'
           }
         }
+      },
+      dateFormat (date, format) {
+        if (format === undefined) {
+          format = date
+          date = new Date()
+        }
+        let map = {
+          'M': date.getMonth() + 1,
+          'd': date.getDate(),
+          'h': date.getHours(),
+          'm': date.getMinutes(),
+          's': date.getSeconds(),
+          'q': Math.floor((date.getMonth() + 3) / 3),
+          'S': date.getMilliseconds()
+        }
+        format = format.replace(/([yMdhmsqS])+/g, function (all, t) {
+          let v = map[t]
+          if (v !== undefined) {
+            if (all.length > 1) {
+              v = '0' + v
+              v = v.substr(v.length - 2)
+            }
+            return v
+          } else if (t === 'y') {
+            return (date.getFullYear() + '').substr(4 - all.length)
+          }
+          return all
+        })
+        return format
+      },
+      removeItem (index) {
+        this.rows.splice(index, 1)
+      },
+      handleSelectionChange (val) {
+        this.selectedRows = val
+      },
+      cancelUpload () {
+        this.cancelUploading = true
+      }
+    },
+    computed: {
+      analyzing () {
+        return !!this.fileMsg
       }
     }
-
   }
 </script>
 
