@@ -311,7 +311,7 @@
             minX: 100,
             minY: 12,
             format: (text) => {
-              return text.replace(/年|月/g, '.').replace('日', '')
+              return text.replace(/[年月]/g, '.').replace('日', '')
             }
           },
           {
@@ -370,7 +370,7 @@
             validate: (val) => {
               return /^[\d|\.{0,1}]*$/i.test(val)
             },
-            default: 0
+            default: '0'
           },
           {
             text: '价税合计',
@@ -406,7 +406,12 @@
     methods: {
       exportData () {
         // console.log(this.rows.length, this.rows)
-        this.$http.post('/api/excel', {data: this.selectedRows}).then((data) => {
+        this.$http.post('/api/excel', {
+          data: this.selectedRows,
+          untaxedAmount: this.untaxedAmount,
+          taxedAmount: this.taxedAmount,
+          priceTax: this.priceTax
+        }).then((data) => {
           this.download = true
           if (data.data) {
             this.downloadSuccess = true
@@ -485,7 +490,7 @@
                                 let spaceX = _temp.transform[4] - tar.x - tar.w
                                 if (spaceY < tar.minY && spaceX > 0 && spaceX < tar.minX) {
                                   value.push(_temp.str)
-                                  content.items.splice(k, 1) // 移除已取值
+                                  // content.items.splice(k, 1) // 移除已取值
                                 }
                               } else {
                                 let spaceY = tar.y - _temp.transform[5]
@@ -499,7 +504,7 @@
                                 } else if (spaceY === minY) {
                                   if (spaceX < tar.minX) {
                                     value.push(_temp.str)
-                                    content.items.splice(k, 1) // 移除已取值
+                                    // content.items.splice(k, 1) // 移除已取值
                                   }
                                 }
                               }
@@ -580,6 +585,8 @@
         this.untaxedAmount = 0
         this.taxedAmount = 0
         this.priceTax = 0
+        this.selectedRows = []
+        this.percentage = 0
       },
       findObj (rs, key) {
         if (!rs) {
@@ -638,4 +645,5 @@
     }
   }
 </script>
+
 
