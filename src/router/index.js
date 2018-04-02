@@ -21,12 +21,14 @@ const router = new Router({
 })
 
 router.beforeEach((to, from, next) => {
+  let iExTime = 2 * 24 * 60 * 60 * 1000
   if (to.path === '/login') {
     if (localStorage.token) {
       return next('/')
     }
   } else {
-    if (!localStorage.token) {
+    if (!localStorage.token || !localStorage.tokenCreateDate ||
+      (+localStorage.tokenCreateDate + iExTime) < +new Date()) {
       return next('/login')
     }
   }
