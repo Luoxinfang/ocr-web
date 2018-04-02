@@ -1,6 +1,6 @@
 <style scoped>
   .login{
-    width: 460px;
+    width: 400px;
     margin: 100px auto 0;
     padding: 50px 60px 50px 30px;
     border: 1px solid #e1e1e1;
@@ -133,6 +133,7 @@ export default {
             data = data.data
             if (data.code === '0000') {
               window.localStorage.token = data.data
+              window.localStorage.tokenCreateDate = +new Date()
               this.$router.push('/')
               this.$message.success('登录成功')
             } else {
